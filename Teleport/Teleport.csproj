@@ -3,7 +3,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Authors>Uiharu</Authors>
-        <Version>0.0.6.2</Version>
+        <Version>0.0.6.3</Version>
         <Description>传送</Description>
         <Configurations>Debug;Release;Release-Pro</Configurations>
     </PropertyGroup>
@@ -80,3 +80,4 @@
 <!--        <Exec Command="&quot;..\reactor\dotNET_Reactor.Console.exe&quot; -file &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot; -short_strings 1 -naming strange_short&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.pdb&quot;&#xA;move &quot;..\Teleport\bin\x64\Release\Teleport_Secure\Teleport.dll&quot; &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;rd /s /q &quot;..\Teleport\bin\x64\Release\Teleport_Secure&quot;" />-->
 <!--    </Target>-->
 </Project>
+
