@@ -202,3 +202,25 @@ jobs:
           $remote = "https://x-access-token:$env:PUSH_TOKEN@github.com/${{ github.repository }}.git"
           git remote set-url origin $remote
           git push origin HEAD:main
+
+      - name: Trigger Post-Bump Build
+        if: steps.version.outputs.changed == 'true'
+        env:
+          PUSH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        shell: pwsh
+        run: |
+          $headers = @{
+            Authorization = "token $env:PUSH_TOKEN"
+            Accept = "application/vnd.github+json"
+            "User-Agent" = "Codex"
+          }
+
+          $body = @{
+            event_type = "post-bump-build"
+          } | ConvertTo-Json
+
+          Invoke-RestMethod -Method Post `
+            -Uri "https://api.github.com/repos/${{ github.repository }}/dispatches" `
+            -Headers $headers `
+            -Body $body `
+            -ContentType "application/json"
