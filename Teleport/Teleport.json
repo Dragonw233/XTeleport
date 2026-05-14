@@ -1,0 +1,14 @@
+{
+    "Author": "Uiharu,NiGuangOwO",
+    "Name": "XTeleportOnline",
+    "Punchline": "传送",
+    "Description": "/tpmain 打开主界面",
+    "InternalName": "Teleport",
+    "IconUrl": "https://raw.githubusercontent.com/uiharuayako/PantsPlugins/master/icons/tp.jpg",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 15,
+    "MakeZip": true,
+    "Tags": [
+        "cheat"
+    ]
+}

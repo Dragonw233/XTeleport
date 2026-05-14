@@ -1,0 +1,11 @@
+.vs/
+obj/
+bin/
+*.user
+.idea
+*.DotSettings.user
+*.rar
+*.zip
+build/
+build-test/
+latest.zip
