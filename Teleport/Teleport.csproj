@@ -31,9 +31,9 @@
 
     <ItemGroup>
         <PackageReference Include="DalamudPackager" Version="15.0.0" />
-        <PackageReference Include="ECommons" Version="3.1.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
-        <PackageReference Include="System.Management" Version="8.0.0" />
+        <PackageReference Include="ECommons" Version="3.2.1.12" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="11.0.0-preview.5.26302.115" />
+        <PackageReference Include="System.Management" Version="11.0.0-preview.5.26302.115" />
         <Reference Include="FFXIVClientStructs">
             <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
             <Private>false</Private>
@@ -66,6 +66,10 @@
             <HintPath>$(DalamudLibPath)ImGuiScene.dll</HintPath>
             <Private>false</Private>
         </Reference>
+        <Reference Include="InteropGenerator.Runtime">
+            <HintPath>$(DalamudLibPath)InteropGenerator.Runtime.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
         <Reference Include="Lumina">
             <HintPath>$(DalamudLibPath)Lumina.dll</HintPath>
             <Private>false</Private>
@@ -74,6 +78,12 @@
             <HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath>
             <Private>false</Private>
         </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="Teleport.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 <!--    <Target Name="PostBuild" Condition="'$(Configuration)' == 'Release'" AfterTargets="PostBuildEvent">-->
 <!--        &lt;!&ndash; <Exec Command="&quot;..\reactor\dotNET_Reactor.Console.exe&quot; -file &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot; -hide_calls 1 -control_flow 1 -flow_level 9 -short_strings 1 -naming strange_short&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.pdb&quot;&#xA;move &quot;..\Teleport\bin\x64\Release\Teleport_Secure\Teleport.dll&quot; &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;rd /s /q &quot;..\Teleport\bin\x64\Release\Teleport_Secure&quot;" /> &ndash;&gt;-->

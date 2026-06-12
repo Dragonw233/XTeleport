@@ -22,6 +22,7 @@ namespace Teleport
         public bool UseCommand { get; set; } = false;
         public bool ExeAllCommand { get; set; } = false;
         public bool UseQuickTp { get; set; } = false;
+        public bool UseDivePacketTpInQuickWindow { get; set; } = false;
         public bool UseSkillSpeed { get; set; } = false;
         public bool UseSpellSpeed { get; set; } = false;
         public ushort SkillSpeed { get; set; } = 400;

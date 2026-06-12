@@ -163,6 +163,18 @@ public class MainWindow : Window, IDisposable
                 {
                     StaticUtils.SetPos2XX(easyX, easyY, easyZ);
                 }
+                //潜水调试按钮
+                ImGui.Separator();
+                ImGui.TextColored(ImGuiColors.DalamudYellow, "潜水发包TP调试");
+                if (ImGui.Button("潜水发包TP（上方坐标）"))
+                {
+                    StaticUtils.TeleportMeByDivePacket(easyX, easyY, easyZ);
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("潜水发包TP（当前坐标）"))
+                {
+                    StaticUtils.TeleportMeByDivePacket(position);
+                }
 
                 ImGui.EndTabItem();
             }

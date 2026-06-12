@@ -33,7 +33,15 @@ namespace Teleport.Windows
                 Plugin.Configuration.HideXYZ = hideXYZ;
                 Plugin.Configuration.Save();
             }
-
+            
+            ImGui.SameLine();
+            var useDivePacketTp = Plugin.Configuration.UseDivePacketTpInQuickWindow;
+            if (ImGui.Checkbox("潜水发包TP", ref useDivePacketTp))
+            {
+                Plugin.Configuration.UseDivePacketTpInQuickWindow = useDivePacketTp;
+                Plugin.Configuration.Save();
+            }
+            
             if (ImGui.Button("主界面"))
             {
                 plugin.DrawMain();
@@ -150,8 +158,16 @@ namespace Teleport.Windows
                 {
                     if (StaticUtils.IsSameMapId(config.TPLists[i].MapId))
                     {
-                        StaticUtils.TeleportMe(config.TPLists[i].TPs[j].X, config.TPLists[i].TPs[j].Y,
-                                               config.TPLists[i].TPs[j].Z);
+                        if (Plugin.Configuration.UseDivePacketTpInQuickWindow)
+                        {
+                            StaticUtils.TeleportMeByDivePacket(config.TPLists[i].TPs[j].X, config.TPLists[i].TPs[j].Y,
+                                                               config.TPLists[i].TPs[j].Z);
+                        }
+                        else
+                        {
+                            StaticUtils.TeleportMe(config.TPLists[i].TPs[j].X, config.TPLists[i].TPs[j].Y,
+                                                   config.TPLists[i].TPs[j].Z);
+                        }
                     }
                 }
 
