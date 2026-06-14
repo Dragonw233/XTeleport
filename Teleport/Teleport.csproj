@@ -25,6 +25,15 @@
         <UserSecretsId>87eded68-54c8-4d53-a5c1-a13525fd23c8</UserSecretsId>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <JiaguRoot Condition="'$(JiaguRoot)' == '' and '$(GITHUB_ACTIONS)' == ''">D:\jiagu</JiaguRoot>
+        <JiaguRoot Condition="'$(JiaguRoot)' == '' and '$(GITHUB_ACTIONS)' != ''">$(MSBuildProjectDirectory)\tools\jiagu</JiaguRoot>
+        <DotNetReactorPath>$(JiaguRoot)\dnr75-main\bin\dnr7.5\dotNET_Reactor.Console.exe</DotNetReactorPath>
+        <NekoParaOODPath>$(JiaguRoot)\NekoPara.OOD.exe</NekoParaOODPath>
+        <EnableJiagu Condition="'$(EnableJiagu)' == '' and '$(Configuration)' == 'Release-Pro'">true</EnableJiagu>
+        <EnableJiagu Condition="'$(EnableJiagu)' == ''">false</EnableJiagu>
+    </PropertyGroup>
+
     <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
         <DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
     </PropertyGroup>
@@ -85,6 +94,44 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
+
+    <Target Name="ObfuscateAssembly"
+            AfterTargets="Build"
+            BeforeTargets="PostBuildEvent;PostBuild"
+            Condition="'$(EnableJiagu)' == 'true'">
+        <PropertyGroup>
+            <PluginOutputDir>$(OutputPath)Encrypted</PluginOutputDir>
+            <ProtectedDll>$(PluginOutputDir)\$(AssemblyName).dll</ProtectedDll>
+            <OriginalDll>$(OutputPath)$(AssemblyName).dll</OriginalDll>
+            <OriginalPdb>$(OutputPath)$(AssemblyName).pdb</OriginalPdb>
+            <OriginalDllBak>$(OutputPath)$(AssemblyName).dll.ori</OriginalDllBak>
+            <ProtectedPdb>$(PluginOutputDir)\$(AssemblyName).pdb</ProtectedPdb>
+        </PropertyGroup>
+
+        <Error Condition="!Exists('$(DotNetReactorPath)')"
+               Text="dotNET Reactor not found: $(DotNetReactorPath)" />
+        <Error Condition="!Exists('$(NekoParaOODPath)')"
+               Text="NekoPara.OOD not found: $(NekoParaOODPath)" />
+        <Error Condition="!Exists('$(OriginalDll)')"
+               Text="Original assembly not found: $(OriginalDll)" />
+
+        <MakeDir Directories="$(PluginOutputDir)" />
+
+        <Exec Command="&quot;$(DotNetReactorPath)&quot; -file &quot;$(OriginalDll)&quot; -targetfile &quot;$(ProtectedDll)&quot; -stringencryption 1 -control_flow_obfuscation 1 -flow_level 9 -suppressildasm 1 -antitamp 0 -obfuscation 1 -obfuscate_public_types 1"
+              ContinueOnError="false"
+              ConsoleToMSBuild="true" />
+
+        <Exec Command="&quot;$(NekoParaOODPath)&quot; &quot;$(ProtectedDll)&quot;"
+              ContinueOnError="false"
+              ConsoleToMSBuild="true" />
+
+        <Delete Files="$(OriginalDllBak)" Condition="Exists('$(OriginalDllBak)')" />
+        <Move SourceFiles="$(OriginalDll)" DestinationFiles="$(OriginalDllBak)" />
+        <Copy SourceFiles="$(ProtectedDll)" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" />
+        <Delete Files="$(OriginalPdb)" Condition="Exists('$(OriginalPdb)')" />
+        <Delete Files="$(ProtectedPdb)" Condition="Exists('$(ProtectedPdb)')" />
+        <RemoveDir Directories="$(PluginOutputDir)" Condition="Exists('$(PluginOutputDir)')" />
+    </Target>
 <!--    <Target Name="PostBuild" Condition="'$(Configuration)' == 'Release'" AfterTargets="PostBuildEvent">-->
 <!--        &lt;!&ndash; <Exec Command="&quot;..\reactor\dotNET_Reactor.Console.exe&quot; -file &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot; -hide_calls 1 -control_flow 1 -flow_level 9 -short_strings 1 -naming strange_short&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.pdb&quot;&#xA;move &quot;..\Teleport\bin\x64\Release\Teleport_Secure\Teleport.dll&quot; &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;rd /s /q &quot;..\Teleport\bin\x64\Release\Teleport_Secure&quot;" /> &ndash;&gt;-->
 <!--        <Exec Command="&quot;..\reactor\dotNET_Reactor.Console.exe&quot; -file &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot; -short_strings 1 -naming strange_short&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;del &quot;..\Teleport\bin\x64\Release\Teleport.pdb&quot;&#xA;move &quot;..\Teleport\bin\x64\Release\Teleport_Secure\Teleport.dll&quot; &quot;..\Teleport\bin\x64\Release\Teleport.dll&quot;&#xA;rd /s /q &quot;..\Teleport\bin\x64\Release\Teleport_Secure&quot;" />-->

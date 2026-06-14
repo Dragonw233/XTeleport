@@ -124,7 +124,7 @@ namespace Teleport
         {
             if (LocalPlayer == null)
             {
-                Svc.Chat.Print("[潜水TP] LocalPlayer 为空，已跳过");
+                PluginLog.Debug("[潜水TP] LocalPlayer 为空，已跳过");
                 return;
             }
 
@@ -144,22 +144,40 @@ namespace Teleport
             if (packet.Length == 0) return false;
 
             var framework = Framework.Instance();
-            if (framework == null) { Svc.Chat.Print("[潜水TP] framework 为空"); return false; }
+            if (framework == null)
+            {
+                PluginLog.Debug("[潜水TP] framework 为空");
+                return false;
+            }
 
             var proxy = framework->NetworkModuleProxy;
-            if (proxy == null) { Svc.Chat.Print("[潜水TP] NetworkModuleProxy 为空"); return false; }
-            if (proxy->NetworkModule == null) { Svc.Chat.Print("[潜水TP] NetworkModule 为空"); return false; }
+            if (proxy == null)
+            {
+                PluginLog.Debug("[潜水TP] NetworkModuleProxy 为空");
+                return false;
+            }
+
+            if (proxy->NetworkModule == null)
+            {
+                PluginLog.Debug("[潜水TP] NetworkModule 为空");
+                return false;
+            }
 
             // NetworkModule 是有类型指针，"+ 2672" 会按 sizeof(NetworkModule) 缩放并被整除截断为 0，
             // 必须先转 byte* 再加字节偏移，否则拿到错误指针 → 发包崩溃/掉线。
             var zoneClient = *(ZoneClient**)((byte*)proxy->NetworkModule + 2672);
             PluginLog.Debug($"[潜水TP] NetworkModule=0x{(nint)proxy->NetworkModule:X} ZoneClient=0x{(nint)zoneClient:X}");
-            if (zoneClient == null) { Svc.Chat.Print("[潜水TP] ZoneClient 为空（2672 偏移可能不对）"); return false; }
+            if (zoneClient == null)
+            {
+                PluginLog.Debug("[潜水TP] ZoneClient 为空（2672 偏移可能不对）");
+                return false;
+            }
 
             fixed (byte* packetPtr = packet)
             {
+                PluginLog.Debug($"[潜水TP] SendPacket payload: {BitConverter.ToString(packet).Replace("-", " ")}");
                 var ok = zoneClient->SendPacket((nint)packetPtr, 0U, 0U, false);
-                Svc.Chat.Print($"[潜水TP] SendPacket 返回 {ok}");
+                PluginLog.Debug($"[潜水TP] SendPacket 返回 {ok}");
                 return ok;
             }
         }
