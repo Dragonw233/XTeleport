@@ -1,14 +1,26 @@
 {
-    "Author": "Uiharu,NiGuangOwO,Tabris",
-    "Name": "XTeleportOnline",
-    "Punchline": "传送",
-    "Description": "/tpmain 打开主界面,基于初春佬的xtp的小改版",
-    "InternalName": "Teleport",
-    "IconUrl": "https://raw.githubusercontent.com/uiharuayako/PantsPlugins/master/icons/tp.jpg",
-    "ApplicableVersion": "any",
-    "DalamudApiLevel": 15,
-    "MakeZip": true,
-    "Tags": [
-        "cheat"
-    ]
+  "Author": "Uiharu,NiGuangOwO,Tabris",
+  "Name": "XTeleportOnline",
+  "InternalName": "Teleport",
+  "AssemblyVersion": "7.0.0.4",
+  "Description": "基于初春佬的 XTP 项目更新修复版。",
+  "ApplicableVersion": "any",
+  "RepoUrl": "https://github.com/Dragonw233/XTeleport",
+  "Tags": [
+    "teleport",
+    "utility"
+  ],
+  "CategoryTags": [
+    "utility"
+  ],
+  "DalamudApiLevel": 15,
+  "LoadRequiredState": 0,
+  "LoadSync": false,
+  "CanUnloadAsync": false,
+  "LoadPriority": 0,
+  "IconUrl": "https://raw.githubusercontent.com/uiharuayako/PantsPlugins/master/icons/tp.jpg",
+  "Punchline": "XTeleportOnline",
+  "Changelog": "更新修复。",
+  "AcceptsFeedback": true,
+  "MakeZip": true
 }
