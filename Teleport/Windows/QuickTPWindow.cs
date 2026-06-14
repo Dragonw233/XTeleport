@@ -36,10 +36,22 @@ namespace Teleport.Windows
             
             ImGui.SameLine();
             var useDivePacketTp = Plugin.Configuration.UseDivePacketTpInQuickWindow;
-            if (ImGui.Checkbox("潜水发包TP", ref useDivePacketTp))
+            if (ImGui.Checkbox("野外潜水发包TP", ref useDivePacketTp))
             {
+                if (useDivePacketTp && !Plugin.GetActivationPro())
+                {
+                    Svc.Chat.PrintError("快捷窗口的潜水发包TP需要先通过码2验证。");
+                    useDivePacketTp = false;
+                }
+
                 Plugin.Configuration.UseDivePacketTpInQuickWindow = useDivePacketTp;
                 Plugin.Configuration.Save();
+            }
+
+            if (Plugin.Configuration.UseDivePacketTpInQuickWindow)
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(Dalamud.Interface.Colors.ImGuiColors.TankBlue, "码2已验证");
             }
             
             if (ImGui.Button("主界面"))
@@ -160,6 +172,14 @@ namespace Teleport.Windows
                     {
                         if (Plugin.Configuration.UseDivePacketTpInQuickWindow)
                         {
+                            if (!Plugin.GetActivationPro())
+                            {
+                                Svc.Chat.PrintError("快捷窗口的潜水发包TP需要先通过码2验证。");
+                                Plugin.Configuration.UseDivePacketTpInQuickWindow = false;
+                                Plugin.Configuration.Save();
+                                continue;
+                            }
+
                             StaticUtils.TeleportMeByDivePacket(config.TPLists[i].TPs[j].X, config.TPLists[i].TPs[j].Y,
                                                                config.TPLists[i].TPs[j].Z);
                         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud;
@@ -128,6 +128,12 @@ namespace Teleport
                 return;
             }
 
+            if (!Plugin.GetActivationPro())
+            {
+                Svc.Chat.PrintError("潜水发包TP需要先通过码2验证。");
+                return;
+            }
+
             var packet = BuildDiveTpPacket(x, y, z);
             if (!TrySendDiveTpPacket(packet))
                 Svc.Chat.PrintError("潜水发包TP发送失败。");
@@ -147,7 +153,7 @@ namespace Teleport
             // NetworkModule 是有类型指针，"+ 2672" 会按 sizeof(NetworkModule) 缩放并被整除截断为 0，
             // 必须先转 byte* 再加字节偏移，否则拿到错误指针 → 发包崩溃/掉线。
             var zoneClient = *(ZoneClient**)((byte*)proxy->NetworkModule + 2672);
-            Svc.Chat.Print($"[潜水TP] NetworkModule=0x{(nint)proxy->NetworkModule:X} ZoneClient=0x{(nint)zoneClient:X}");
+            PluginLog.Debug($"[潜水TP] NetworkModule=0x{(nint)proxy->NetworkModule:X} ZoneClient=0x{(nint)zoneClient:X}");
             if (zoneClient == null) { Svc.Chat.Print("[潜水TP] ZoneClient 为空（2672 偏移可能不对）"); return false; }
 
             fixed (byte* packetPtr = packet)

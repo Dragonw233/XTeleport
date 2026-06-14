@@ -166,14 +166,32 @@ public class MainWindow : Window, IDisposable
                 //潜水调试按钮
                 ImGui.Separator();
                 ImGui.TextColored(ImGuiColors.DalamudYellow, "潜水发包TP调试");
+                if (!Plugin.GetActivationPro())
+                {
+                    ImGui.TextColored(ImGuiColors.DPSRed, "使用潜水发包TP需要先完成码2验证");
+                }
                 if (ImGui.Button("潜水发包TP（上方坐标）"))
                 {
-                    StaticUtils.TeleportMeByDivePacket(easyX, easyY, easyZ);
+                    if (!Plugin.GetActivationPro())
+                    {
+                        Svc.Chat.PrintError("潜水发包TP需要先通过码2验证。");
+                    }
+                    else
+                    {
+                        StaticUtils.TeleportMeByDivePacket(easyX, easyY, easyZ);
+                    }
                 }
                 ImGui.SameLine();
                 if (ImGui.Button("潜水发包TP（当前坐标）"))
                 {
-                    StaticUtils.TeleportMeByDivePacket(position);
+                    if (!Plugin.GetActivationPro())
+                    {
+                        Svc.Chat.PrintError("潜水发包TP需要先通过码2验证。");
+                    }
+                    else
+                    {
+                        StaticUtils.TeleportMeByDivePacket(position);
+                    }
                 }
 
                 ImGui.EndTabItem();

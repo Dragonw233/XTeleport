@@ -234,7 +234,7 @@ public class ConfigWindow : Window, IDisposable
                 }
             }
             // 增加DC链接
-            ImGui.TextColored(ImGuiColors.DPSRed, "没有激活码？现在不需要激活码啦！随意使用吧~");
+            ImGui.TextColored(ImGuiColors.DPSRed, "潜水功能需要激活码2，请在各个渠道获取我的联系方式发送码2机器码获取~");
             ImGui.SameLine();
         }
 
