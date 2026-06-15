@@ -32,6 +32,7 @@
         <NekoParaOODPath>$(JiaguRoot)\NekoPara.OOD.exe</NekoParaOODPath>
         <EnableJiagu Condition="'$(EnableJiagu)' == '' and '$(Configuration)' == 'Release-Pro'">true</EnableJiagu>
         <EnableJiagu Condition="'$(EnableJiagu)' == ''">false</EnableJiagu>
+        <EnableNekoParaOOD Condition="'$(EnableNekoParaOOD)' == ''">false</EnableNekoParaOOD>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
@@ -110,18 +111,19 @@
 
         <Error Condition="!Exists('$(DotNetReactorPath)')"
                Text="dotNET Reactor not found: $(DotNetReactorPath)" />
-        <Error Condition="!Exists('$(NekoParaOODPath)')"
+        <Error Condition="'$(EnableNekoParaOOD)' == 'true' and !Exists('$(NekoParaOODPath)')"
                Text="NekoPara.OOD not found: $(NekoParaOODPath)" />
         <Error Condition="!Exists('$(OriginalDll)')"
                Text="Original assembly not found: $(OriginalDll)" />
 
         <MakeDir Directories="$(PluginOutputDir)" />
 
-        <Exec Command="&quot;$(DotNetReactorPath)&quot; -file &quot;$(OriginalDll)&quot; -targetfile &quot;$(ProtectedDll)&quot; -stringencryption 1 -control_flow_obfuscation 1 -flow_level 9 -suppressildasm 1 -antitamp 0 -obfuscation 1 -obfuscate_public_types 1"
+        <Exec Command="&quot;$(DotNetReactorPath)&quot; -file &quot;$(OriginalDll)&quot; -targetfile &quot;$(ProtectedDll)&quot; -stringencryption 1 -control_flow_obfuscation 1 -flow_level 9 -declarative_protection 1 -suppressildasm 1 -antitamp 0 -obfuscation 0 -obfuscate_public_types 0 -exclude_types 1 -exclude_methods 1"
               ContinueOnError="false"
               ConsoleToMSBuild="true" />
 
         <Exec Command="&quot;$(NekoParaOODPath)&quot; &quot;$(ProtectedDll)&quot;"
+              Condition="'$(EnableNekoParaOOD)' == 'true'"
               ContinueOnError="false"
               ConsoleToMSBuild="true" />
 

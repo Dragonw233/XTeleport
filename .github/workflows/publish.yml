@@ -81,11 +81,11 @@ jobs:
         shell: pwsh
         run: dotnet restore Teleport\Teleport.csproj
 
-      - name: Build Release Package
+      - name: Build Release-Pro Package
         if: steps.version.outputs.changed == 'true'
         shell: pwsh
         run: |
-          dotnet build --no-restore -c Release Teleport\Teleport.csproj `
+          dotnet build --no-restore -c Release-Pro Teleport\Teleport.csproj `
             -p:AssemblyVersion=${{ steps.version.outputs.current }} `
             -p:FileVersion=${{ steps.version.outputs.current }} `
             -p:PackageVersion=${{ steps.version.outputs.current }} `
@@ -112,7 +112,37 @@ jobs:
           }
 
           "plugin_name=$($manifest.Name)" | Out-File -Append -FilePath $env:GITHUB_OUTPUT
+          "internal_name=$($manifest.InternalName)" | Out-File -Append -FilePath $env:GITHUB_OUTPUT
           "icon_name=tp.jpg" | Out-File -Append -FilePath $env:GITHUB_OUTPUT
+
+      - name: Generate Repo Manifest
+        if: steps.version.outputs.changed == 'true'
+        shell: pwsh
+        run: |
+          $manifest = Get-Content .\build\Teleport.json -Raw | ConvertFrom-Json
+          $downloadLink = "https://github.com/${{ github.repository }}/releases/latest/download/latest.zip"
+          $repoEntry = [ordered]@{
+            Author = $manifest.Author
+            Name = $manifest.Name
+            InternalName = $manifest.InternalName
+            AssemblyVersion = "${{ steps.version.outputs.current }}"
+            Description = $manifest.Description
+            ApplicableVersion = $manifest.ApplicableVersion
+            RepoUrl = $manifest.RepoUrl
+            DalamudApiLevel = $manifest.DalamudApiLevel
+            LoadRequiredState = $manifest.LoadRequiredState
+            LoadSync = $manifest.LoadSync
+            CanUnloadAsync = $manifest.CanUnloadAsync
+            LoadPriority = $manifest.LoadPriority
+            IconUrl = $manifest.IconUrl
+            Punchline = $manifest.Punchline
+            AcceptsFeedback = $manifest.AcceptsFeedback
+            DownloadLinkInstall = $downloadLink
+            DownloadLinkTesting = $downloadLink
+            DownloadLinkUpdate = $downloadLink
+          }
+
+          @($repoEntry) | ConvertTo-Json -Depth 8 | Set-Content -Path .\build\repo.json -Encoding utf8
 
       - name: Push Release Tag
         if: steps.version.outputs.changed == 'true'
@@ -137,7 +167,9 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.current }}
-          files: ./build/latest.zip
+          files: |
+            ./build/latest.zip
+            ./build/repo.json
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update PantsPlugins

@@ -33,26 +33,10 @@ namespace Teleport
         #region 指针 / sig 扫描
 
         // 地面移动用：直接拿到 setPosition 函数地址。
-        private static Lazy<IntPtr> GetSetPosFunPtr = new(() =>
-            Svc.SigScanner.TryScanText(
-                "40 53 48 83 EC 20 F3 0F 11 89 B0 00 00 00 48 8B D9 F3 0F 11 91 B4 00 00 00 F3 0F 11 99 B8 00 00 00",
-                out var addr)
-                ? addr
-                : IntPtr.Zero);
+        private static Lazy<IntPtr> GetSetPosFunPtr = new(TeleportProtected.ScanSetPositionPointer);
 
         // 飞行 / 潜水用：定位坐标结构体，写入坐标即可在该状态下平移。
-        internal static Lazy<IntPtr> GetPosPtr4FlyDive = new(ScanFlyDivePtr);
-
-        private static IntPtr ScanFlyDivePtr()
-        {
-            if (!Svc.SigScanner.TryScanText("4C 8D 35 ?? ?? ?? ?? 48 8B 09 48 8B F2 BF 01 00 00 00", out var ptr))
-                return IntPtr.Zero;
-
-            var nextInstr = ptr + 7;                  // 下一条指令地址
-            var offset = Marshal.ReadInt32(ptr + 3);  // lea 的相对偏移
-            var instance = nextInstr + offset;
-            return instance + 0x5520 + 0x150;
-        }
+        internal static Lazy<IntPtr> GetPosPtr4FlyDive = new(TeleportProtected.ScanFlyDivePointer);
 
         private static IntPtr SetPosFunPtr => GetSetPosFunPtr.Value;
         internal static IntPtr PosPtr4FlyDive => GetPosPtr4FlyDive.Value;
@@ -60,12 +44,10 @@ namespace Teleport
         internal static void RefreshPtr() =>
             PluginLog.Log($"获取ptr：地面移动：{GetSetPosFunPtr.Value}|飞行潜水：{GetPosPtr4FlyDive.Value}");
 
-        internal static void RefreshFlyDive() => GetPosPtr4FlyDive = new Lazy<IntPtr>(ScanFlyDivePtr);
+        internal static void RefreshFlyDive() => GetPosPtr4FlyDive = new Lazy<IntPtr>(TeleportProtected.ScanFlyDivePointer);
 
-        private delegate long SetPositionDelegate(long playerAddress, float x, float y, float z);
-
-        private static readonly SetPositionDelegate setPosition =
-            Marshal.GetDelegateForFunctionPointer<SetPositionDelegate>(SetPosFunPtr);
+        private static readonly TeleportProtected.SetPositionDelegate setPosition =
+            TeleportProtected.CreateSetPositionDelegate();
 
         #endregion
 
@@ -99,23 +81,7 @@ namespace Teleport
         //   0x40/0x48:       抓包为进程内指针，属内部字段/非线路数据，保持 0
         internal static byte[] BuildDiveTpPacket(float x, float y, float z)
         {
-            byte[] packet =
-            {
-                15, 1, 0, 0, 0, 0, 0, 0,
-                48, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                95, 2, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0
-            };
-            Buffer.BlockCopy(BitConverter.GetBytes(x), 0, packet, 52, 4);
-            Buffer.BlockCopy(BitConverter.GetBytes(y), 0, packet, 56, 4);
-            Buffer.BlockCopy(BitConverter.GetBytes(z), 0, packet, 60, 4);
-            return packet;
+            return TeleportProtected.CreateDiveTpPacket(x, y, z);
         }
 
         internal static void TeleportMeByDivePacket(Vector3 pos) => TeleportMeByDivePacket(pos.X, pos.Y, pos.Z);
@@ -135,51 +101,8 @@ namespace Teleport
             }
 
             var packet = BuildDiveTpPacket(x, y, z);
-            if (!TrySendDiveTpPacket(packet))
+            if (!TeleportProtected.TrySendDiveTpPacket(packet))
                 Svc.Chat.PrintError("潜水发包TP发送失败。");
-        }
-
-        private static unsafe bool TrySendDiveTpPacket(byte[] packet)
-        {
-            if (packet.Length == 0) return false;
-
-            var framework = Framework.Instance();
-            if (framework == null)
-            {
-                PluginLog.Debug("[潜水TP] framework 为空");
-                return false;
-            }
-
-            var proxy = framework->NetworkModuleProxy;
-            if (proxy == null)
-            {
-                PluginLog.Debug("[潜水TP] NetworkModuleProxy 为空");
-                return false;
-            }
-
-            if (proxy->NetworkModule == null)
-            {
-                PluginLog.Debug("[潜水TP] NetworkModule 为空");
-                return false;
-            }
-
-            // NetworkModule 是有类型指针，"+ 2672" 会按 sizeof(NetworkModule) 缩放并被整除截断为 0，
-            // 必须先转 byte* 再加字节偏移，否则拿到错误指针 → 发包崩溃/掉线。
-            var zoneClient = *(ZoneClient**)((byte*)proxy->NetworkModule + 2672);
-            PluginLog.Debug($"[潜水TP] NetworkModule=0x{(nint)proxy->NetworkModule:X} ZoneClient=0x{(nint)zoneClient:X}");
-            if (zoneClient == null)
-            {
-                PluginLog.Debug("[潜水TP] ZoneClient 为空（2672 偏移可能不对）");
-                return false;
-            }
-
-            fixed (byte* packetPtr = packet)
-            {
-                PluginLog.Debug($"[潜水TP] SendPacket payload: {BitConverter.ToString(packet).Replace("-", " ")}");
-                var ok = zoneClient->SendPacket((nint)packetPtr, 0U, 0U, false);
-                PluginLog.Debug($"[潜水TP] SendPacket 返回 {ok}");
-                return ok;
-            }
         }
 
         #endregion

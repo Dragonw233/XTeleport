@@ -139,7 +139,7 @@ public class ConfigWindow : Window, IDisposable
             ImGui.SameLine();               
             if (ImGui.Button($"复制I-Ching裤链到剪切板"))
             {
-                ImGui.SetClipboardText("https://raw.githubusercontent.com/extrant/DalamudPlugins/main/pluginmaster.json");
+                ImGui.SetClipboardText("https://github.com/Dragonw233/XTeleport/releases/latest/download/repo.json");
             }
         }
 
