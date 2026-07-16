@@ -16,6 +16,13 @@ publish-run.log
 /DalamudPlugins/
 /dalamud-plugins/
 
+# Local-only publish and development files
+/.github/workflows/
+/Teleport/publish.ps1
+/Teleport/publish.py
+/Teleport/DEVELOPMENT_NOTES.md
+/code2-generator.html
+
 # Teleport.Protected build artifacts
 **/TeleportProtected.cs
 **/Teleport.Protected.dll

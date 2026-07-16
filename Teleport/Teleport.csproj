@@ -3,7 +3,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Authors>Uiharu</Authors>
-        <Version>7.0.0.17</Version>
+        <Version>7.0.0.19</Version>
         <Description>传送</Description>
         <Configurations>Debug;Release;Release-Pro</Configurations>
     </PropertyGroup>
