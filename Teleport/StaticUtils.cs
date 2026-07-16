@@ -15,8 +15,10 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Network;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Lumina.Text.ReadOnly;
+using System.Collections.Generic;
 
 namespace Teleport
 {
@@ -81,7 +83,18 @@ namespace Teleport
         //   0x40/0x48:       抓包为进程内指针，属内部字段/非线路数据，保持 0
         internal static byte[] BuildDiveTpPacket(float x, float y, float z)
         {
-            return TeleportProtected.CreateDiveTpPacket(x, y, z);
+            var rotation = LocalPlayer?.Rotation ?? 0f;
+            return TeleportProtected.CreateDiveTpPacket(
+                x,
+                y,
+                z,
+                rotation,
+                Svc.Condition[ConditionFlag.Mounted]);
+        }
+
+        internal static byte[] BuildDiveStartPacket(float x, float y, float z)
+        {
+            return TeleportProtected.CreateDiveStartPacket(x, y, z, LocalPlayer?.Rotation ?? 0f);
         }
 
         internal static void TeleportMeByDivePacket(Vector3 pos) => TeleportMeByDivePacket(pos.X, pos.Y, pos.Z);
@@ -94,13 +107,12 @@ namespace Teleport
                 return;
             }
 
-            if (!Plugin.GetActivationPro())
-            {
-                Svc.Chat.PrintError("潜水发包TP需要先通过码2验证。");
+            if (!CanTeleportInCurrentState(requireProActivation: true))
                 return;
-            }
 
-            var packet = BuildDiveTpPacket(x, y, z);
+            var packet = Svc.Condition[ConditionFlag.Diving]
+                ? BuildDiveStartPacket(x, y, z)
+                : BuildDiveTpPacket(x, y, z);
             if (!TeleportProtected.TrySendDiveTpPacket(packet))
                 Svc.Chat.PrintError("潜水发包TP发送失败。");
         }
@@ -109,28 +121,44 @@ namespace Teleport
 
         #region 传送入口
 
-        private static void SetPos(IntPtr address, float x, float y, float z)
+        private static bool CanTeleportInCurrentState(bool requireProActivation)
         {
             var territory = Svc.ClientState.TerritoryType;
             if (territory is 1165 or 1197)
             {
                 Svc.Chat.PrintError("收到用户反馈，在该区域TP有较高的被封可能性，请您爱惜账号，尽量避免使用！");
-                return;
+                return false;
             }
 
-            if (!Plugin.GetActivation())
+            if (requireProActivation)
+            {
+                if (!Plugin.GetActivationPro())
+                {
+                    Svc.Chat.PrintError("潜水发包TP需要先通过码2验证。");
+                    return false;
+                }
+            }
+            else if (!Plugin.GetActivation())
             {
                 Svc.Chat.PrintError("请先激活，/tpconfig打开激活界面");
-                return;
+                return false;
             }
 
             XCountResults.RefreshPlayerCount();
             if (Plugin.Configuration.XCountThreshold > 0 && !XCountResults.AllowTP())
             {
                 Svc.Chat.PrintError(
-                    $"当前周围人数{XCountResults.CountsDict["<all>"]}多于你设定的阈值{Plugin.Configuration.XCountThreshold}，不会传送");
-                return;
+                    $"当前周边有 {XCountResults.EffectiveNearbyPlayerCount} 个绿玩，超过你设定的阈值 {Plugin.Configuration.XCountThreshold}，不会传送");
+                return false;
             }
+
+            return true;
+        }
+
+        private static void SetPos(IntPtr address, float x, float y, float z)
+        {
+            if (!CanTeleportInCurrentState(requireProActivation: false))
+                return;
 
             // 传送的是自己且正处于飞行 / 潜水状态时，走写内存平移以避免坐标失配。
             if (LocalPlayer != null && address == LocalPlayer.Address &&
@@ -144,7 +172,32 @@ namespace Teleport
             setPosition((long)address, x, y, z);
         }
 
+        internal static bool CanUsePartyTeleport() => LocalPlayer != null && Plugin.GetActivationPro();
+
         internal static void TeleportMe(Vector3 pos) => TeleportMe(pos.X, pos.Y, pos.Z);
+
+        internal static void TeleportSmartInZone(Vector3 pos)
+        {
+            var player = LocalPlayer;
+            if (player == null)
+                return;
+
+            if (Plugin.Configuration.UseDivePacketTpInQuickWindow)
+            {
+                if (!Plugin.GetActivationPro())
+                {
+                    Plugin.Configuration.UseDivePacketTpInQuickWindow = false;
+                    Plugin.Configuration.Save();
+                }
+                else if (DiveTpTerritoryHelper.ShouldUseDivePacket(player.Position, pos))
+                {
+                    TeleportMeByDivePacket(pos);
+                    return;
+                }
+            }
+
+            TeleportMe(pos);
+        }
 
         internal static void TeleportMe(float x, float y, float z)
         {
@@ -173,15 +226,19 @@ namespace Teleport
         {
             var member = GetValidPartyMember(index);
             if (member == null) return;
-            var player = LocalPlayer;
-            if (player == null) return;
-            SetPos(player.Address, member.Position.X, member.Position.Y, member.Position.Z);
+
+            TeleportMeByDivePacket(member.Position);
         }
 
-        internal static IPlayerCharacter? GetValidPartyMember(int index)
+        internal static void TeleportToPartyMember(IPartyMember member)
+        {
+            TeleportMeByDivePacket(member.Position);
+        }
+
+        internal static IPartyMember? GetValidPartyMember(int index)
         {
             index--;
-            if (index > Svc.Party.Length)
+            if (index < 0 || index >= Svc.Party.Length)
             {
                 Svc.Chat.PrintError("小队成员超过长度限制");
                 return null;
@@ -195,9 +252,130 @@ namespace Teleport
                 return null;
             }
 
-            // 注意：此处沿用原有行为返回 LocalPlayer。若小队传送实际无效，
-            // 需改为返回该成员对应的角色对象（member.Position）。
-            return LocalPlayer;
+            return member;
+        }
+
+        internal static IPartyMember? GetPartyMemberByName(string name, int occurrence = 0)
+        {
+            if (string.IsNullOrWhiteSpace(name) || occurrence < 0)
+                return null;
+
+            var currentOccurrence = 0;
+            for (var i = 0; i < Svc.Party.Length; i++)
+            {
+                var address = Svc.Party.GetPartyMemberAddress(i);
+                var member = Svc.Party.CreatePartyMemberReference(address);
+                if (member == null)
+                    continue;
+
+                if (!string.Equals(member.Name.TextValue, name, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (currentOccurrence == occurrence)
+                    return member;
+
+                currentOccurrence++;
+            }
+
+            return null;
+        }
+
+        internal static IPartyMember? GetPartyMemberByContentId(ulong contentId)
+        {
+            if (contentId == 0)
+                return null;
+
+            for (var i = 0; i < Svc.Party.Length; i++)
+            {
+                var address = Svc.Party.GetPartyMemberAddress(i);
+                var member = Svc.Party.CreatePartyMemberReference(address);
+                if (member == null)
+                    continue;
+
+                if (member.ContentId == contentId)
+                    return member;
+            }
+
+            return null;
+        }
+
+        internal static IPartyMember? GetPartyMemberByEntityId(uint entityId)
+        {
+            if (entityId == 0)
+                return null;
+
+            for (var i = 0; i < Svc.Party.Length; i++)
+            {
+                var address = Svc.Party.GetPartyMemberAddress(i);
+                var member = Svc.Party.CreatePartyMemberReference(address);
+                if (member == null)
+                    continue;
+
+                if (member.EntityId == entityId || member.ObjectId == entityId)
+                    return member;
+            }
+
+            return null;
+        }
+
+        internal static unsafe List<(int UiIndex, IPartyMember Member)> GetPartyMembersByVisualOrder()
+        {
+            var orderedMembers = new List<(int UiIndex, IPartyMember Member)>(Svc.Party.Length);
+            var seenContentIds = new HashSet<ulong>();
+            var hud = AgentHUD.Instance();
+
+            if (hud != null)
+            {
+                var hudMembers = hud->PartyMembers;
+                var count = Math.Min((int)hud->PartyMemberCount, hudMembers.Length);
+
+                for (var i = 0; i < count; i++)
+                {
+                    var hudMember = hudMembers[i];
+                    var member = GetPartyMemberByContentId(hudMember.ContentId) ??
+                                 GetPartyMemberByEntityId(hudMember.EntityId);
+
+                    if (member == null)
+                        continue;
+
+                    if (member.ContentId != 0 && !seenContentIds.Add(member.ContentId))
+                        continue;
+
+                    orderedMembers.Add((hudMember.Index, member));
+                }
+            }
+
+            if (orderedMembers.Count > 0)
+            {
+                orderedMembers.Sort(static (left, right) => left.UiIndex.CompareTo(right.UiIndex));
+                return orderedMembers;
+            }
+
+            for (var i = 0; i < Svc.Party.Length; i++)
+            {
+                var address = Svc.Party.GetPartyMemberAddress(i);
+                var member = Svc.Party.CreatePartyMemberReference(address);
+                if (member == null)
+                    continue;
+
+                orderedMembers.Add((i, member));
+            }
+
+            return orderedMembers;
+        }
+
+        internal static IEnumerable<string> GetPartyMemberPositionSummaries()
+        {
+            for (var i = 0; i < Svc.Party.Length; i++)
+            {
+                var address = Svc.Party.GetPartyMemberAddress(i);
+                var member = Svc.Party.CreatePartyMemberReference(address);
+                if (member == null)
+                    continue;
+
+                yield return
+                    $"{i + 1}. {member.Name.TextValue}: {Math.Round(member.Position.X, 2)}, {Math.Round(member.Position.Y, 2)}, {Math.Round(member.Position.Z, 2)}";
+            }
         }
 
         internal static Vector3 MousePos()

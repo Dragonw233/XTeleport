@@ -35,6 +35,9 @@ namespace Teleport
         // 打开设置页面
         private const string OpenConfigWindow = "/tpconfig";
 
+        // 打开快捷传送面板
+        private const string OpenQuickTeleportPanel = "/tpquick";
+
         // 传送自己到x y z，并且验证地图id
         private const string TPMeSafe = "/stp";
 
@@ -103,6 +106,7 @@ namespace Teleport
         {
             { OpenMainWindow, "打开主页面" },
             { OpenConfigWindow, "打开设置页面" },
+            { OpenQuickTeleportPanel, "打开快捷传送面板" },
             { TPMeSafe, "格式：/stp x y z id，将自己传送到指定坐标，只有当前地图id与输入相同时才会进行传送" },
             { TPMeSafeXZY, "格式：/stp2 x z y id，将自己传送到指定坐标，只有当前地图id与输入相同时才会进行传送，这个命令是为了兼容fpt的坐标格式" },
             { TPMeUnsafe, "格式：/ftp x y z，强制将自己传送到指定坐标，不验证地图id" },
@@ -134,9 +138,11 @@ namespace Teleport
         private ConfigWindow ConfigWindow { get; init; }
 
         private MainWindow MainWindow { get; init; }
+        private XCountWindow XCountWindow { get; init; }
         private TPListWindow TPListWindow { get; init; }
 
         private QuickTPWindow QuickTPWindow { get; init; }
+        private PartyListTeleportOverlay PartyListTeleportOverlay { get; init; }
 
         // 判断地图
         private int _mapIndex = -1;
@@ -216,10 +222,13 @@ namespace Teleport
             PluginLog.Log($"当前硬件id为：{MacId}");
             ConfigWindow = new ConfigWindow(this);
             MainWindow = new MainWindow(this);
+            XCountWindow = new XCountWindow();
             TPListWindow = new TPListWindow();
             QuickTPWindow = new QuickTPWindow(this);
+            PartyListTeleportOverlay = new PartyListTeleportOverlay();
             WindowSystem.AddWindow(ConfigWindow);
             WindowSystem.AddWindow(MainWindow);
+            WindowSystem.AddWindow(XCountWindow);
             WindowSystem.AddWindow(TPListWindow);
             WindowSystem.AddWindow(QuickTPWindow);
             foreach (var (command, helpMessage) in CommandsDictionary)
@@ -243,13 +252,11 @@ namespace Teleport
             SpeedTesk = new RepeatedTask(Configuration.SpeedRefreshInterval);
             SpeedTesk._timer.Elapsed += RefreshSpeed;
             SpeedTesk.Start();
-            XCountResults.GetPlayerCount();
             StaticUtils.RefreshPtr();
             // 地图改变触发事件
             updateStatus();
             Svc.Framework.Update += underGroundMove;
             Svc.Framework.Update += quickFace;
-            XCountResults.GetPlayerCount();
         }
 
         private void CheckNekoVerifier(object? sender, EventArgs e)
@@ -470,35 +477,14 @@ namespace Teleport
         {
             if (StaticUtils.LocalPlayer == null)
                 return;
-            if (Configuration.UseQuickTp)
-            {
-                var currentMap = Svc.ClientState.TerritoryType;
-                for (var i = 0; i < Configuration.TPLists.Count; i++)
-                {
-                    if (currentMap == Configuration.TPLists[i].MapId)
-                    {
-                        MapIndex = i;
-                        if (Configuration.TPLists[i].UseQuickWindow)
-                        {
-                            QuickTPWindow.IsOpen = true;
-                        }
-                        else
-                        {
-                            QuickTPWindow.IsOpen = false;
-                        }
 
-                        return;
-                    }
-                }
+            var currentMap = Svc.ClientState.TerritoryType;
+            MapIndex = Configuration.TPLists.FindIndex(x => x.MapId == currentMap);
 
-                // 循环结束仍未寻得
-                MapIndex = -1;
-                QuickTPWindow.IsOpen = false;
-            }
-            else
-            {
-                QuickTPWindow.IsOpen = false;
-            }
+            if (Configuration.UseQuickTp &&
+                MapIndex >= 0 &&
+                Configuration.TPLists[MapIndex].UseQuickWindow)
+                QuickTPWindow.IsOpen = true;
         }
 
         private static long _lastTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
@@ -592,6 +578,12 @@ namespace Teleport
             if (OpenConfigWindow.Equals(command))
             {
                 ConfigWindow.IsOpen = true;
+                return;
+            }
+
+            if (OpenQuickTeleportPanel.Equals(command))
+            {
+                QuickTPWindow.TogglePanel();
                 return;
             }
 
@@ -907,13 +899,21 @@ namespace Teleport
 
         internal static bool GetActivationPro() => enablePro && nekoVerify;
 
-        internal void DrawUI() => WindowSystem.Draw();
+        internal void DrawUI()
+        {
+            WindowSystem.Draw();
+            PartyListTeleportOverlay.Draw();
+        }
 
         internal void DrawList() => TPListWindow.Toggle();
 
         internal void DrawMain() => MainWindow.Toggle();
 
+        internal void DrawQuickTP() => QuickTPWindow.TogglePanel();
+
         internal void DrawConfigUI() => ConfigWindow.IsOpen = true;
+
+        internal void DrawXCountUI() => XCountWindow.IsOpen = true;
 
         // 快速传送
         internal void DoFastLoad()

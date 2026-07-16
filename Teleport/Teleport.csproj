@@ -3,7 +3,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Authors>Uiharu</Authors>
-        <Version>0.0.6.3</Version>
+        <Version>7.0.0.17</Version>
         <Description>传送</Description>
         <Configurations>Debug;Release;Release-Pro</Configurations>
     </PropertyGroup>
@@ -30,7 +30,6 @@
         <JiaguRoot Condition="'$(JiaguRoot)' == '' and '$(GITHUB_ACTIONS)' != ''">$(MSBuildProjectDirectory)\tools\jiagu</JiaguRoot>
         <DotNetReactorPath>$(JiaguRoot)\dnr75-main\bin\dnr7.5\dotNET_Reactor.Console.exe</DotNetReactorPath>
         <NekoParaOODPath>$(JiaguRoot)\NekoPara.OOD.exe</NekoParaOODPath>
-        <EnableJiagu Condition="'$(EnableJiagu)' == '' and '$(Configuration)' == 'Release-Pro'">true</EnableJiagu>
         <EnableJiagu Condition="'$(EnableJiagu)' == ''">false</EnableJiagu>
         <EnableNekoParaOOD Condition="'$(EnableNekoParaOOD)' == ''">false</EnableNekoParaOOD>
     </PropertyGroup>
@@ -96,17 +95,22 @@
         </None>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Teleport.Protected\Teleport.Protected.csproj" />
+    </ItemGroup>
+
     <Target Name="ObfuscateAssembly"
             AfterTargets="Build"
             BeforeTargets="PostBuildEvent;PostBuild"
             Condition="'$(EnableJiagu)' == 'true'">
         <PropertyGroup>
             <PluginOutputDir>$(OutputPath)Encrypted</PluginOutputDir>
-            <ProtectedDll>$(PluginOutputDir)\$(AssemblyName).dll</ProtectedDll>
-            <OriginalDll>$(OutputPath)$(AssemblyName).dll</OriginalDll>
-            <OriginalPdb>$(OutputPath)$(AssemblyName).pdb</OriginalPdb>
-            <OriginalDllBak>$(OutputPath)$(AssemblyName).dll.ori</OriginalDllBak>
-            <ProtectedPdb>$(PluginOutputDir)\$(AssemblyName).pdb</ProtectedPdb>
+            <ProtectedAssemblyName>Teleport.Protected</ProtectedAssemblyName>
+            <ProtectedDll>$(PluginOutputDir)\$(ProtectedAssemblyName).dll</ProtectedDll>
+            <OriginalDll>$(OutputPath)$(ProtectedAssemblyName).dll</OriginalDll>
+            <OriginalPdb>$(OutputPath)$(ProtectedAssemblyName).pdb</OriginalPdb>
+            <OriginalDllBak>$(OutputPath)$(ProtectedAssemblyName).dll.ori</OriginalDllBak>
+            <ProtectedPdb>$(PluginOutputDir)\$(ProtectedAssemblyName).pdb</ProtectedPdb>
         </PropertyGroup>
 
         <Error Condition="!Exists('$(DotNetReactorPath)')"

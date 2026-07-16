@@ -127,6 +127,12 @@
           "System.IO.Pipelines": "11.0.0-preview.5.26302.115",
           "System.Text.Encodings.Web": "11.0.0-preview.5.26302.115"
         }
+      },
+      "teleport.protected": {
+        "type": "Project",
+        "dependencies": {
+          "ECommons": "[3.2.1.12, )"
+        }
       }
     }
   }

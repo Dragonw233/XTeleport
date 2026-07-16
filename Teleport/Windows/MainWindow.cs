@@ -55,8 +55,14 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.SameLine();
+        if (ImGui.Button("快捷传送"))
+        {
+            plugin.DrawQuickTP();
+        }
+
+        ImGui.SameLine();
         var useQuickTP = Plugin.Configuration.UseQuickTp;
-        if (ImGui.Checkbox("使用快速传送窗口", ref useQuickTP))
+        if (ImGui.Checkbox("自动显示快捷传送面板", ref useQuickTP))
         {
             Plugin.Configuration.UseQuickTp = useQuickTP;
             Plugin.Configuration.Save();

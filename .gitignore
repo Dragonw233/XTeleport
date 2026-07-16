@@ -9,3 +9,16 @@ bin/
 build/
 build-test/
 latest.zip
+__pycache__/
+*.py[cod]
+*.bak
+publish-run.log
+/DalamudPlugins/
+/dalamud-plugins/
+
+# Teleport.Protected build artifacts
+**/TeleportProtected.cs
+**/Teleport.Protected.dll
+**/Teleport.Protected.dll.ori
+**/Teleport.Protected.pdb
+**/Teleport.Protected.deps.json

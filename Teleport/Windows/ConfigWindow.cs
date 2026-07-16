@@ -3,6 +3,9 @@ using Dalamud.Interface.Windowing;
 using ECommons.DalamudServices;
 using Dalamud.Bindings.ImGui;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 
 namespace Teleport.Windows;
@@ -13,6 +16,8 @@ public class ConfigWindow : Window, IDisposable
     private Plugin plugin;
     private static string info = "";
     private static bool displayNeko = false;
+    private static string diveTpTerritoryInput = string.Empty;
+    private static bool diveTpTerritoryInputInitialized;
 
     public ConfigWindow(Plugin plugin) : base(
         "传送设置")
@@ -39,11 +44,13 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var useQuickTP = Plugin.Configuration.UseQuickTp;
-        if (ImGui.Checkbox("全局使用快速传送窗口", ref useQuickTP))
+        if (ImGui.Checkbox("自动显示快捷传送面板", ref useQuickTP))
         {
             Plugin.Configuration.UseQuickTp = useQuickTP;
             Plugin.Configuration.Save();
         }
+
+        DrawQuickTeleportSettings();
 
         var canFlay = StaticUtils.PosPtr4FlyDive != IntPtr.Zero;
 
@@ -120,6 +127,68 @@ public class ConfigWindow : Window, IDisposable
             Plugin.Configuration.Save();
         }
 
+        var showPartyListTeleportButtons = Plugin.Configuration.ShowPartyListTeleportButtons;
+        if (ImGui.Checkbox("小队列表显示传送按钮", ref showPartyListTeleportButtons))
+        {
+            Plugin.Configuration.ShowPartyListTeleportButtons = showPartyListTeleportButtons;
+            Plugin.Configuration.Save();
+        }
+
+        if (showPartyListTeleportButtons)
+        {
+            if (ImGui.CollapsingHeader("传送按钮对齐调试"))
+            {
+                ImGui.Indent();
+
+                var showOnLeft = Plugin.Configuration.PartyListTeleportButtonsOnLeft;
+                if (ImGui.Checkbox("显示在左侧", ref showOnLeft))
+                {
+                    Plugin.Configuration.PartyListTeleportButtonsOnLeft = showOnLeft;
+                    Plugin.Configuration.Save();
+                }
+
+                var buttonWidth = Plugin.Configuration.PartyListTeleportButtonWidth;
+                if (ImGui.InputFloat("传送按钮宽度", ref buttonWidth, 1f, 5f))
+                {
+                    Plugin.Configuration.PartyListTeleportButtonWidth = Math.Max(16f, buttonWidth);
+                    Plugin.Configuration.Save();
+                }
+
+                var rowHeight = Plugin.Configuration.PartyListTeleportRowHeight;
+                if (ImGui.InputFloat("每行间距", ref rowHeight, 1f, 5f))
+                {
+                    Plugin.Configuration.PartyListTeleportRowHeight = Math.Max(1f, rowHeight);
+                    Plugin.Configuration.Save();
+                }
+
+                var xOffset = Plugin.Configuration.PartyListTeleportXOffset;
+                if (ImGui.InputFloat("水平偏移", ref xOffset, 1f, 5f))
+                {
+                    Plugin.Configuration.PartyListTeleportXOffset = xOffset;
+                    Plugin.Configuration.Save();
+                }
+
+                var yOffset = Plugin.Configuration.PartyListTeleportYOffset;
+                if (ImGui.InputFloat("垂直偏移", ref yOffset, 1f, 5f))
+                {
+                    Plugin.Configuration.PartyListTeleportYOffset = yOffset;
+                    Plugin.Configuration.Save();
+                }
+
+                if (ImGui.Button("重置传送按钮对齐参数"))
+                {
+                    Plugin.Configuration.PartyListTeleportButtonsOnLeft = true;
+                    Plugin.Configuration.PartyListTeleportButtonWidth = 30f;
+                    Plugin.Configuration.PartyListTeleportRowHeight = 45f;
+                    Plugin.Configuration.PartyListTeleportXOffset = 6f;
+                    Plugin.Configuration.PartyListTeleportYOffset = 0f;
+                    Plugin.Configuration.Save();
+                }
+
+                ImGui.Unindent();
+            }
+        }
+
         if (recvAeCmd)
         {
             ImGui.Text($"您的cid为：{StaticUtils.LocalContentId}");
@@ -127,7 +196,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("开关此选项后需要重新加载插件才能生效");
+            ImGui.SetTooltip("按钮显示开关可能需要重新加载插件；下方对齐参数为实时生效。");
         }
         if (ImGui.CollapsingHeader("Hacks"))
         {
@@ -143,26 +212,38 @@ public class ConfigWindow : Window, IDisposable
             }
         }
 
-        if (ImGui.CollapsingHeader("XCount联动"))
+        if (ImGui.CollapsingHeader("周边安全检测"))
         {
-            ImGui.TextColored(XCountResults.IsXCountInstalled ? ImGuiColors.HealerGreen : ImGuiColors.DPSRed,
-                              XCountResults.IsXCountInstalled ? "XCount连接成功" : "XCount未找到");
-            if (XCountResults.IsXCountInstalled)
-            {
-                ImGui.SameLine();
-                ImGui.Text($"当前人数：{XCountResults.CountsDict["<all>"]}");
-                if (ImGui.Button("尝试连接XCount"))
-                {
-                    XCountResults.GetPlayerCount();
-                }
+            XCountResults.RefreshPlayerCount();
+            var unsafePlayers = XCountResults.EffectiveNearbyPlayerCount;
 
-                ImGui.TextColored(ImGuiColors.TankBlue, "当人数超过阈值时，禁止使用传送功能。设为0时禁用该功能");
-                var xcountThreshold = Configuration.XCountThreshold;
-                if (ImGui.InputInt("人数阈值", ref xcountThreshold))
-                {
-                    Configuration.XCountThreshold = xcountThreshold;
-                    Configuration.Save();
-                }
+            ImGui.Text(XCountResults.IsNearbySafe ? "当前状态：安全" : $"周边绿玩：{unsafePlayers} 个");
+            ImGui.Text($"周边人数：{XCountResults.NearbyPlayerCount}");
+            ImGui.Text($"白名单人数：{XCountResults.WhitelistedNearbyPlayerCount}");
+
+            var ignoreUnsafePlayers = Configuration.IgnoreUnsafePlayersForTP;
+            if (ImGui.Checkbox("无视周边绿玩", ref ignoreUnsafePlayers))
+            {
+                Configuration.IgnoreUnsafePlayersForTP = ignoreUnsafePlayers;
+                Configuration.Save();
+            }
+
+            if (Configuration.IgnoreUnsafePlayersForTP)
+            {
+                ImGui.TextColored(ImGuiColors.DalamudYellow, "已开启无视模式，非白名单玩家不会阻止传送。");
+            }
+
+            ImGui.TextColored(ImGuiColors.TankBlue, "当生效人数超过阈值时，禁止使用传送功能。设为 0 时禁用该功能。");
+            var xcountThreshold = Configuration.XCountThreshold;
+            if (ImGui.InputInt("人数阈值", ref xcountThreshold))
+            {
+                Configuration.XCountThreshold = Math.Max(0, xcountThreshold);
+                Configuration.Save();
+            }
+
+            if (ImGui.Button("打开周边安全检测面板"))
+            {
+                plugin.DrawXCountUI();
             }
         }
 
@@ -239,5 +320,109 @@ public class ConfigWindow : Window, IDisposable
         }
 
 
+    }
+
+    private static void DrawQuickTeleportSettings()
+    {
+        if (!ImGui.CollapsingHeader("快捷传送面板"))
+            return;
+
+        DiveTpTerritoryHelper.EnsureInitialized();
+        if (!diveTpTerritoryInputInitialized)
+            RefreshDiveTpTerritoryInput();
+
+        ImGui.Indent();
+
+        var useSmartDiveTp = Plugin.Configuration.UseDivePacketTpInQuickWindow;
+        if (ImGui.Checkbox("DR 智能潜水TP", ref useSmartDiveTp))
+        {
+            if (useSmartDiveTp && !Plugin.GetActivationPro())
+            {
+                Svc.Chat.PrintError("DR 智能潜水TP需要先通过码2验证。");
+                useSmartDiveTp = false;
+            }
+
+            Plugin.Configuration.UseDivePacketTpInQuickWindow = useSmartDiveTp;
+            Plugin.Configuration.Save();
+        }
+
+        var offset = Plugin.Configuration.QuickTpOffsetDistance;
+        if (ImGui.InputFloat("面板偏移步长", ref offset, 0.5f, 5f, "%.1f"))
+        {
+            Plugin.Configuration.QuickTpOffsetDistance = Math.Clamp(Math.Abs(offset), 0.1f, 1000f);
+            Plugin.Configuration.Save();
+        }
+
+        var currentTerritory = Svc.ClientState.TerritoryType;
+        var containsCurrent = Plugin.Configuration.DiveTpTerritories.Contains(currentTerritory);
+        ImGui.TextColored(
+            containsCurrent ? ImGuiColors.HealerGreen : ImGuiColors.ParsedGrey,
+            containsCurrent
+                ? $"当前地图 #{currentTerritory} 在潜水TP区域表中"
+                : $"当前地图 #{currentTerritory} 不在潜水TP区域表中");
+        ImGui.Text($"区域数量：{Plugin.Configuration.DiveTpTerritories.Count}");
+
+        if (!containsCurrent)
+        {
+            if (ImGui.Button("加入当前地图"))
+            {
+                Plugin.Configuration.DiveTpTerritories.Add(currentTerritory);
+                Plugin.Configuration.DiveTpTerritoriesInitialized = true;
+                Plugin.Configuration.Save();
+                RefreshDiveTpTerritoryInput();
+            }
+        }
+        else if (ImGui.Button("移除当前地图"))
+        {
+            Plugin.Configuration.DiveTpTerritories.Remove(currentTerritory);
+            Plugin.Configuration.Save();
+            RefreshDiveTpTerritoryInput();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("恢复 DR 默认表"))
+        {
+            DiveTpTerritoryHelper.ResetToDrDefaults();
+            RefreshDiveTpTerritoryInput();
+        }
+
+        ImGui.InputTextMultiline(
+            "Territory ID 列表",
+            ref diveTpTerritoryInput,
+            16384,
+            new Vector2(-1f, 90f));
+
+        if (ImGui.Button("应用区域表"))
+        {
+            var ids = new List<uint>();
+            var invalidValues = new List<string>();
+            foreach (var value in diveTpTerritoryInput.Split(
+                         [',', ';', ' ', '\t', '\r', '\n'],
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (uint.TryParse(value, out var id) && id != 0)
+                    ids.Add(id);
+                else
+                    invalidValues.Add(value);
+            }
+
+            if (invalidValues.Count > 0)
+            {
+                Svc.Chat.PrintError($"无法识别的 Territory ID：{string.Join(", ", invalidValues)}");
+            }
+            else
+            {
+                DiveTpTerritoryHelper.ReplaceTerritories(ids);
+                RefreshDiveTpTerritoryInput();
+            }
+        }
+
+        ImGui.Unindent();
+    }
+
+    private static void RefreshDiveTpTerritoryInput()
+    {
+        diveTpTerritoryInput = string.Join(", ", Plugin.Configuration.DiveTpTerritories.OrderBy(x => x));
+        diveTpTerritoryInputInitialized = true;
     }
 }

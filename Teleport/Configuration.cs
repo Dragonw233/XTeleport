@@ -23,6 +23,9 @@ namespace Teleport
         public bool ExeAllCommand { get; set; } = false;
         public bool UseQuickTp { get; set; } = false;
         public bool UseDivePacketTpInQuickWindow { get; set; } = false;
+        public float QuickTpOffsetDistance { get; set; } = 5f;
+        public bool DiveTpTerritoriesInitialized { get; set; } = false;
+        public HashSet<uint> DiveTpTerritories { get; set; } = new();
         public bool UseSkillSpeed { get; set; } = false;
         public bool UseSpellSpeed { get; set; } = false;
         public ushort SkillSpeed { get; set; } = 400;
@@ -30,6 +33,14 @@ namespace Teleport
         public double SpeedRefreshInterval { get; set; } = 0.5;
         public bool HideXYZ { get; set; } = true;
         public int XCountThreshold { get; set; } = 0;
+        public string XCountWhitelist { get; set; } = "";
+        public bool IgnoreUnsafePlayersForTP { get; set; } = false;
+        public bool ShowPartyListTeleportButtons { get; set; } = false;
+        public bool PartyListTeleportButtonsOnLeft { get; set; } = true;
+        public float PartyListTeleportButtonWidth { get; set; } = 30f;
+        public float PartyListTeleportRowHeight { get; set; } = 45f;
+        public float PartyListTeleportXOffset { get; set; } = 6f;
+        public float PartyListTeleportYOffset { get; set; } = 0f;
 
         // 遁地位移相关
         public bool UseUndergroundMove { get; set; } = false;

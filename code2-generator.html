@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XTP 码2生成器</title>
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #f6efe5 0%, #e7f0ea 100%);
+      --panel: rgba(255, 255, 255, 0.88);
+      --border: rgba(31, 41, 55, 0.12);
+      --text: #1f2937;
+      --muted: #5b6472;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --danger: #b42318;
+      --shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(760px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.1;
+    }
+
+    .sub {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .row {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    textarea,
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font: inherit;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--accent-strong);
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .hint,
+    .status {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .status.error {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .mono {
+      font-family: Consolas, "Courier New", monospace;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>XTP 码2生成器</h1>
+    <p class="sub">
+      输入机器码 V2，页面会按项目当前逻辑生成码2。算法和插件保持一致：
+      <span class="mono">SHA256(machineCodeV2 + "XTeleportProMax")</span>
+    </p>
+
+    <div class="row">
+      <label for="machineCode">机器码 V2</label>
+      <textarea id="machineCode" placeholder="在这里粘贴机器码 V2"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="generateBtn">生成码2</button>
+      <button class="secondary" id="copyBtn" type="button">复制码2</button>
+      <button class="secondary" id="clearBtn" type="button">清空</button>
+    </div>
+
+    <div class="row">
+      <label for="result">生成结果</label>
+      <input id="result" class="mono" type="text" readonly placeholder="这里会显示码2">
+    </div>
+
+    <p id="status" class="status">等待输入机器码。</p>
+    <p class="hint">格式建议：32 位十六进制字符串。页面会自动去掉首尾空格后再参与计算。</p>
+  </main>
+
+  <script>
+    const SALT = "XTeleportProMax";
+    const machineCodeInput = document.getElementById("machineCode");
+    const resultInput = document.getElementById("result");
+    const statusEl = document.getElementById("status");
+    const generateBtn = document.getElementById("generateBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.className = isError ? "status error" : "status";
+    }
+
+    function normalizeMachineCode(value) {
+      return value.trim();
+    }
+
+    function looksLikeMachineCode(value) {
+      return /^[0-9a-fA-F]{32}$/.test(value);
+    }
+
+    async function sha256Hex(text) {
+      const data = new TextEncoder().encode(text);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const bytes = Array.from(new Uint8Array(hashBuffer));
+      return bytes.map(byte => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function generateCode() {
+      const raw = machineCodeInput.value;
+      const machineCode = normalizeMachineCode(raw);
+
+      if (!machineCode) {
+        resultInput.value = "";
+        setStatus("请先输入机器码 V2。", true);
+        return;
+      }
+
+      if (!looksLikeMachineCode(machineCode)) {
+        setStatus("机器码格式看起来不对，预期是 32 位十六进制字符串。仍然可以继续生成，但请先确认来源。", true);
+      } else {
+        setStatus("机器码格式已通过检查。");
+      }
+
+      const code2 = await sha256Hex(machineCode + SALT);
+      resultInput.value = code2;
+    }
+
+    generateBtn.addEventListener("click", () => {
+      generateCode().catch(() => setStatus("生成失败，请确认浏览器支持 Web Crypto。", true));
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!resultInput.value) {
+        setStatus("还没有可复制的码2。", true);
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(resultInput.value);
+        setStatus("码2已复制到剪贴板。");
+      } catch {
+        resultInput.select();
+        document.execCommand("copy");
+        setStatus("码2已复制到剪贴板。");
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      machineCodeInput.value = "";
+      resultInput.value = "";
+      setStatus("已清空。");
+      machineCodeInput.focus();
+    });
+
+    machineCodeInput.addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        generateCode().catch(() => setStatus("生成失败，请确认浏览器支持 Web Crypto。", true));
+      }
+    });
+
+    machineCodeInput.focus();
+  </script>
+</body>
+</html>

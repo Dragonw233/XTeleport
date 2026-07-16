@@ -2,7 +2,7 @@
   "Author": "Uiharu,NiGuangOwO,Tabris",
   "Name": "XTeleportOnline",
   "InternalName": "Teleport",
-  "AssemblyVersion": "7.0.0.10",
+  "AssemblyVersion": "7.0.0.17",
   "Description": "基于初春佬的 XTP 项目更新修复版。",
   "ApplicableVersion": "any",
   "RepoUrl": "https://github.com/Dragonw233/XTeleport",
@@ -18,9 +18,9 @@
   "LoadSync": false,
   "CanUnloadAsync": false,
   "LoadPriority": 0,
-  "IconUrl": "https://raw.githubusercontent.com/uiharuayako/PantsPlugins/master/icons/tp.jpg",
+  "IconUrl": "https://raw.githubusercontent.com/Dragonw233/XTeleport/main/icon-512.jpg",
   "Punchline": "XTeleportOnline",
-  "Changelog": "更新修复。",
+  "Changelog": "更新潜水opcode。",
   "AcceptsFeedback": true,
   "MakeZip": true
 }
